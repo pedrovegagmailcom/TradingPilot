@@ -5,34 +5,121 @@
 
 class RiskManager : public IRiskManager
   {
-  double riskAmount;
-public:
-   virtual void Init() { }
-   virtual double CalculateLotSize(double riskPercent, double stopLossPips)
-  {
-    // Ejemplo simplificado:
-    // Obtenemos el balance actual y el valor del pip para el símbolo
-    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-    double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
-    double tickSize  = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-    // Cálculo básico del valor en riesgo:
-    // (balance * riesgo%) / (stopLossPips * (tickValue / tickSize))
-    riskAmount = balance * (riskPercent / 100.0);
-    double lotSize = riskAmount / (stopLossPips * (tickValue / tickSize));
+private:
+   double m_max_risk_per_trade_pct;
+   double m_min_sl_points;
 
-    // Ajuste para cumplir con las restricciones del símbolo:
-    double volMin  = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-    double volStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-    
-    // Si el lote calculado es menor que el mínimo permitido, usar el mínimo
-    if(lotSize < volMin)
-       lotSize = volMin;
-    
-    // Ajustar el tamaño de lote al múltiplo del paso permitido
-    lotSize = MathFloor(lotSize / volStep) * volStep;
-    
-    return(lotSize);
-  }
+   RiskDecision Reject(const string reason)
+     {
+      RiskDecision decision;
+      decision.allowed = false;
+      decision.reason = reason;
+      return decision;
+     }
+
+public:
+   RiskManager(const double maxRiskPerTradePct=0.5, const double minSlPoints=1.0)
+     {
+      m_max_risk_per_trade_pct = maxRiskPerTradePct;
+      m_min_sl_points = minSlPoints;
+     }
+
+   virtual void Init() { }
+
+   virtual RiskDecision Evaluate(const string symbol,
+                                 const ENUM_ORDER_TYPE orderType,
+                                 const double entryPrice,
+                                 const double stopLossPrice,
+                                 const string strategyId)
+     {
+      (void)strategyId;
+      if(stopLossPrice == 0.0)
+         return Reject("SL inválido: stopLossPrice=0");
+      if(entryPrice <= 0.0)
+         return Reject("Precio de entrada inválido");
+
+      if(orderType == ORDER_TYPE_BUY && stopLossPrice >= entryPrice)
+         return Reject("SL inválido: en BUY debe ser menor al entry");
+      if(orderType == ORDER_TYPE_SELL && stopLossPrice <= entryPrice)
+         return Reject("SL inválido: en SELL debe ser mayor al entry");
+
+      double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+      if(point <= 0.0)
+         return Reject("SYMBOL_POINT inválido");
+
+      double sl_points = MathAbs(entryPrice - stopLossPrice) / point;
+      if(sl_points < m_min_sl_points)
+         return Reject("SL demasiado pequeño (puntos insuficientes)");
+
+      double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
+      double tickSize  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
+      if(tickValue <= 0.0 || tickSize <= 0.0)
+         return Reject("TickSize o TickValue inválido");
+
+      double money_per_point_per_lot = (tickValue / tickSize) * point;
+      if(money_per_point_per_lot <= 0.0)
+         return Reject("Valor monetario por punto inválido");
+
+      double risk_per_lot = sl_points * money_per_point_per_lot;
+      if(risk_per_lot <= 0.0)
+         return Reject("Riesgo por lote inválido");
+
+      double equity = AccountInfoDouble(ACCOUNT_EQUITY);
+      if(equity <= 0.0)
+         return Reject("Equity inválida");
+      if(m_max_risk_per_trade_pct <= 0.0)
+         return Reject("MaxRiskPerTradePct inválido");
+
+      double risk_money_target = equity * (m_max_risk_per_trade_pct / 100.0);
+      if(risk_money_target <= 0.0)
+         return Reject("RiskMoneyTarget inválido");
+
+      double volume_raw = risk_money_target / risk_per_lot;
+
+      double volMin  = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MIN);
+      double volMax  = SymbolInfoDouble(symbol, SYMBOL_VOLUME_MAX);
+      double volStep = SymbolInfoDouble(symbol, SYMBOL_VOLUME_STEP);
+      int volDigits = (int)SymbolInfoInteger(symbol, SYMBOL_VOLUME_DIGITS);
+      if(volStep <= 0.0 || volMax <= 0.0)
+         return Reject("Restricciones de volumen inválidas");
+
+      double volume = MathMin(volume_raw, volMax);
+      volume = MathFloor(volume / volStep) * volStep;
+      volume = NormalizeDouble(volume, volDigits);
+      if(volume < volMin)
+         return Reject("Volumen menor al mínimo permitido");
+
+      double margin = 0.0;
+      if(!OrderCalcMargin(orderType, symbol, volume, entryPrice, margin))
+         return Reject("OrderCalcMargin falló");
+
+      double freeMargin = AccountInfoDouble(ACCOUNT_FREEMARGIN);
+      if(freeMargin < margin)
+         return Reject("Margin insuficiente");
+
+      RiskDecision decision;
+      decision.allowed = true;
+      decision.volume = volume;
+      decision.risk_money = volume * risk_per_lot;
+      decision.risk_pct = (decision.risk_money / equity) * 100.0;
+      decision.reason = "";
+      return decision;
+     }
+
+   // Legacy: método anterior, usa precio actual para calcular el SL en base a pips.
+   virtual double CalculateLotSize(double riskPercent, double stopLossPips)
+     {
+      string symbol = Symbol();
+      double price = SymbolInfoDouble(symbol, SYMBOL_BID);
+      double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+      double pipSize = point * 10.0;
+      double stopLossPrice = price - (stopLossPips * pipSize);
+      double previous = m_max_risk_per_trade_pct;
+      m_max_risk_per_trade_pct = riskPercent;
+      RiskDecision decision = Evaluate(symbol, ORDER_TYPE_BUY, price, stopLossPrice, "legacy");
+      m_max_risk_per_trade_pct = previous;
+      return decision.volume;
+     }
 
    virtual double GetCloseProfitPercent() override 
    { 
@@ -40,14 +127,32 @@ public:
    }
    
    
-  bool ValidateTrade(TradeEntity* entity) {
-    double totalRisk = 0;
-    for(int i=0; i<entity.legs.Total(); i++) {
+  bool ValidateTrade(TradeEntity* entity)
+    {
+     if(entity == NULL)
+        return false;
+     double totalRiskMoney = 0.0;
+     for(int i = 0; i < entity.legs.Total(); i++)
+       {
         TradeLeg* leg = (TradeLeg*)entity.legs.At(i);
-        totalRisk += CalculateLotSize(RiskPercent, leg.slPips);
+        if(leg == NULL)
+           continue;
+        double entry = (entity.type == ORDER_TYPE_BUY)
+           ? SymbolInfoDouble(entity.symbol, SYMBOL_ASK)
+           : SymbolInfoDouble(entity.symbol, SYMBOL_BID);
+        double point = SymbolInfoDouble(entity.symbol, SYMBOL_POINT);
+        double pipSize = point * 10.0;
+        double slPrice = (entity.type == ORDER_TYPE_BUY)
+           ? entry - (leg.slPips * pipSize)
+           : entry + (leg.slPips * pipSize);
+        RiskDecision decision = Evaluate(entity.symbol, entity.type, entry, slPrice, entity.strategyName);
+        if(!decision.allowed)
+           return false;
+        leg.lotSize = decision.volume;
+        totalRiskMoney += decision.risk_money;
+       }
+     return (totalRiskMoney > 0.0);
     }
-    return (totalRisk <= riskAmount);
-}
   };
 
 #endif // __RISKMANAGER_MQH__
