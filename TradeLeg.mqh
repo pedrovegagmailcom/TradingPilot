@@ -10,8 +10,10 @@ public:
     long   ticket;
     double lotSize;
     double entryPrice;   // Nuevo
-    double slPips;       // Nuevo: SL en pips
-    double tpPips;       // Nuevo: TP en pips
+    double slPips;       // Legacy: SL en pips
+    double tpPips;       // Legacy: TP en pips
+    double slPrice;      // SL en precio (aprobado por riesgo)
+    double tpPrice;      // TP en precio (aprobado por riesgo)
     int    trailingStepPips; // Nuevo: Paso trailing
     long   magic;
     string comment;
@@ -25,6 +27,8 @@ public:
     {
         ticket = 0;
         entryPrice = 0.0;
+        slPrice = 0.0;
+        tpPrice = 0.0;
         magic = 0;
         comment = "";
         legIndex = -1;
