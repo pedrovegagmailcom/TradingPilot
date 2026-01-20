@@ -2,9 +2,10 @@
 #define __IENTRYSTRATEGY_MQH__
 
 #include "TradeEntity.mqh"
+#include <Object.mqh>
 
 // Interfaz para estrategias de entrada
-class IEntryStrategy
+class IEntryStrategy : public CObject
   {
 public:
    // Inicializa la estrategia (si es necesario)

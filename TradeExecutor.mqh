@@ -101,7 +101,10 @@ double CalculateTP(string sym, ENUM_ORDER_TYPE type, double entry, double pips) 
         datetime now = TimeCurrent();
         for(int i = PositionsTotal() - 1; i >= 0; --i)
         {
-            if(!PositionSelectByIndex(i))
+            ulong ticket = PositionGetTicket(i);
+            if(ticket == 0)
+                continue;
+            if(!PositionSelectByTicket(ticket))
                 continue;
             if(PositionGetString(POSITION_SYMBOL) != symbol)
                 continue;
@@ -116,7 +119,7 @@ double CalculateTP(string sym, ENUM_ORDER_TYPE type, double entry, double pips) 
             if(MathAbs(v - volume) > 0.0000001)
                 continue;
 
-            return (long)PositionGetInteger(POSITION_TICKET);
+            return (long)ticket;
         }
         return -1;
     }

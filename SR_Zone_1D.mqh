@@ -173,7 +173,7 @@ void DrawZones(LocalSZone &zones[])
       string zoneName = "ZW_" + IntegerToString(i);
       ObjectCreate(0, zoneName, OBJ_RECTANGLE, 0, time1, startPrice, time2, endPrice);
 
-      color zoneColor = ColorToARGB(g_zoneWorkColor, (uchar)(255*g_zoneOpacity));
+      color zoneColor = (color)ColorToARGB(g_zoneWorkColor, (uchar)(255*g_zoneOpacity));
       ObjectSetInteger(0, zoneName, OBJPROP_COLOR, zoneColor);
       ObjectSetInteger(0, zoneName, OBJPROP_BACK, false);
 
