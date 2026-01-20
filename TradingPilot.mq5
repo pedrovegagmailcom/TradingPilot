@@ -44,6 +44,18 @@ TradeExecutor     *g_executor;
 CTrade trade;             // Objeto para enviar órdenes
 int    g_tickCounter = 0; // Contador de ticks
 
+int BaseMagic(const string id)
+{
+   ulong hash = 5381;
+   int len = StringLen(id);
+   for(int i = 0; i < len; i++)
+     {
+       hash = ((hash << 5) + hash) + (uchar)StringGetCharacter(id, i);
+     }
+   int base = 10000 + (int)(hash % 50000);
+   return base;
+}
+
 //-------------------------------------------------------------------
 // Expert initialization function
 //-------------------------------------------------------------------
@@ -130,6 +142,17 @@ void OnTick() {
 
     TradeEntity* newTrade = new TradeEntity();
     newTrade.CopyFrom(bestPlan);
+    newTrade.tradeId = TradeEntity::NextTradeId();
+    int baseMagic = BaseMagic(newTrade.strategyName);
+    for(int i = 0; i < newTrade.legs.Total(); i++)
+      {
+        TradeLeg *leg = (TradeLeg*)newTrade.legs.At(i);
+        if(leg == NULL)
+           continue;
+        leg.legIndex = i;
+        leg.magic = (long)(baseMagic + i);
+        leg.comment = "TP|" + newTrade.strategyName + "|T" + (string)newTrade.tradeId + "|L" + (string)(i + 1);
+      }
     if(g_riskManager.ValidateTrade(newTrade))
     {
         g_executor.Execute(newTrade);
