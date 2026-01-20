@@ -5,6 +5,7 @@
 #include "Logger.mqh"
 
 #include "ZoneEntryStrategy.mqh"
+#include "DummyEntryStrategy.mqh"
 #include "StrategyRegistry.mqh"
 #include "PortfolioSelector.mqh"
 
@@ -24,6 +25,7 @@
 input double RiskPercent   = 0.5;   // % de riesgo por operación
 input double DrawdownLimit = 10.0;  // Límite máximo de drawdown
 input bool UseZoneEntry = true;
+input bool UseDummyEntry = false;
 input bool   UseDoubleBottom = false;// Activar estrategia Doble Suelo
 input bool   UseBreakout     = true;// Activar estrategia Breakout (por implementar)
 input int    LogFrequency    = 10;  // Frecuencia de log: cada X ticks
@@ -62,6 +64,12 @@ int OnInit()
       IEntryStrategy *zoneStrategy = new ZoneEntryStrategy(1.0, UseZoneEntry); // threshold=3 pips
       zoneStrategy.Init();
       g_strategyRegistry.Add(zoneStrategy);
+   }
+   if(UseDummyEntry)
+   {
+      IEntryStrategy *dummyStrategy = new DummyEntryStrategy(UseDummyEntry);
+      dummyStrategy.Init();
+      g_strategyRegistry.Add(dummyStrategy);
    }
    // Instanciar gestor de posiciones y de riesgo
    g_positionManager = new PositionManager();
@@ -106,7 +114,7 @@ void OnTick() {
     // 2. Generar nueva planificación
     if(g_tradeManager.HasActiveTradeBySymbol(_Symbol))
     {
-        PrintFormat("[Portfolio] skip: active trade for %s", _Symbol);
+        PrintFormat("[Portfolio] skip %s: active trade", _Symbol);
         return;
     }
 
