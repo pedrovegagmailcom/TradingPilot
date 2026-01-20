@@ -64,7 +64,7 @@ public:
     // ----------------------------------------
     virtual bool CanEnterTrade(string symbol, string strategyName)
     {
-        return !g_tradeManager.HasActiveTrade(strategyName, symbol);
+        return !g_tradeManager.HasActiveTradeBySymbol(symbol);
     }
 
 private:

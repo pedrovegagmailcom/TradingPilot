@@ -9,7 +9,10 @@ class IEntryStrategy
 public:
    // Inicializa la estrategia (si es necesario)
    virtual void Init() = 0;
-   virtual bool GenerateTradePlan(TradeEntity& plan) = 0;
+   virtual string Id() = 0;
+   virtual int Priority() = 0;
+   virtual bool Enabled() = 0;
+   virtual bool TryGeneratePlan(const string symbol, TradeEntity &outPlan, double &outScore) = 0;
    
    // (Opcional) Obtiene la señal generada (se puede definir una estructura o un simple mensaje)
    virtual void GetSignal() = 0;

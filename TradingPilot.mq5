@@ -4,9 +4,9 @@
 #include "ILogger.mqh"
 #include "Logger.mqh"
 
-#include "IEntryStrategy.mqh"
-
 #include "ZoneEntryStrategy.mqh"
+#include "StrategyRegistry.mqh"
+#include "PortfolioSelector.mqh"
 
 #include "IPositionManager.mqh"
 #include "PositionManager.mqh"
@@ -30,7 +30,8 @@ input int    LogFrequency    = 10;  // Frecuencia de log: cada X ticks
 
 // Variables globales
 ILogger          *g_logger;
-IEntryStrategy   *g_entryStrategy;
+StrategyRegistry *g_strategyRegistry;
+PortfolioSelector *g_portfolioSelector;
 IPositionManager *g_positionManager;
 IRiskManager     *g_riskManager;
 TradeManager     *g_tradeManager;
@@ -50,12 +51,16 @@ int OnInit()
    g_logger.Init();
    g_logger.Log("TradingPilot inicializado");
 
-  
+   g_tradeManager = new TradeManager();
+   g_zoneManager = new ZoneManager();
+   g_strategyRegistry = new StrategyRegistry();
+   g_portfolioSelector = new PortfolioSelector(g_strategyRegistry, g_tradeManager);
 
    if(UseZoneEntry)
    {
-      g_entryStrategy = new ZoneEntryStrategy(1.0); // threshold=3 pips
-      g_entryStrategy.Init();
+      IEntryStrategy *zoneStrategy = new ZoneEntryStrategy(1.0, UseZoneEntry); // threshold=3 pips
+      zoneStrategy.Init();
+      g_strategyRegistry.Add(zoneStrategy);
    }
    // Instanciar gestor de posiciones y de riesgo
    g_positionManager = new PositionManager();
@@ -64,8 +69,6 @@ int OnInit()
    g_riskManager = new RiskManager();
    g_riskManager.Init();
    g_executor = new TradeExecutor();
-   g_tradeManager = new TradeManager();
-   g_zoneManager = new ZoneManager();
    
    DetectZonesOnce();
 
@@ -79,7 +82,13 @@ void OnDeinit(const int reason)
 {
    g_logger.Log("TradingPilot finalizando");
    if(g_logger)         { delete g_logger;         g_logger = NULL; }
-   if(g_entryStrategy)  { delete g_entryStrategy;  g_entryStrategy = NULL; }
+   if(g_portfolioSelector) { delete g_portfolioSelector; g_portfolioSelector = NULL; }
+   if(g_strategyRegistry)
+     {
+       g_strategyRegistry.ClearAndDelete();
+       delete g_strategyRegistry;
+       g_strategyRegistry = NULL;
+     }
    if(g_positionManager){ delete g_positionManager;g_positionManager = NULL; }
    if(g_riskManager)    { delete g_riskManager;    g_riskManager = NULL; }
    if(g_tradeManager)   { delete g_tradeManager;   g_tradeManager = NULL; }
@@ -94,22 +103,18 @@ void OnTick() {
     g_positionManager.ManagePositions();
     
     // 2. Generar nueva planificación
-    if(g_positionManager.CanEnterTrade(_Symbol, "ZoneStrategy")) {
-        TradeEntity* newTrade = new TradeEntity(_Symbol, ORDER_TYPE_BUY, "ZoneStrategy");
-        
-        if(g_entryStrategy.GenerateTradePlan(newTrade)) { 
+    if(g_positionManager.CanEnterTrade(_Symbol, "Portfolio")) {
+        TradeEntity* newTrade = NULL;
+        if(g_portfolioSelector.SelectBestPlan(_Symbol, newTrade)) 
+        {
             if(g_riskManager.ValidateTrade(newTrade)) {
                 g_executor.Execute(newTrade);
                 g_tradeManager.AddTrade(newTrade);
-               }
-               else 
-                  delete newTrade;
-               }
-            
-            else {
+            }
+            else 
+            {
                 delete newTrade;
             }
-            
-        
+        }
     }
 }

@@ -79,6 +79,18 @@ public:
          }
        return false;
      }
+
+   // Verifica si existe una operación activa para un símbolo (regla de 1 trade por símbolo)
+   bool HasActiveTradeBySymbol(string symbol)
+     {
+       for(int i = 0; i < trades.Total(); i++)
+         {
+           TradeEntity *entity = (TradeEntity*) trades.At(i);
+           if(entity.active && entity.symbol == symbol)
+              return true;
+         }
+       return false;
+     }
      
    // Actualiza el estado de las operaciones abiertas. 
    // Se registra solo cuando se detecta que una operación ha sido cerrada, y se elimina del array.

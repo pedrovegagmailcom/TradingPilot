@@ -3,6 +3,7 @@
 
 #include "IEntryStrategy.mqh"
 #include "ZoneManager.mqh"
+#include "ScoreUtils.mqh"
 
 // Estrategia de entrada que revisa si el precio está cerca
 // de una "zona de trabajo" sin distinguir si es soporte/resistencia.
@@ -10,11 +11,13 @@ class ZoneEntryStrategy : public IEntryStrategy
 {
 private:
    double m_thresholdPips; // distancia en pips para considerar "zona alcanzada"
+   bool m_enabled;
 
 public:
    // Constructor (ej. threshold por defecto = 3 pips)
-   ZoneEntryStrategy(double thresholdPips=1.0)
-   : m_thresholdPips(thresholdPips)
+   ZoneEntryStrategy(double thresholdPips=1.0, bool enabled=true)
+   : m_thresholdPips(thresholdPips),
+     m_enabled(enabled)
    {
    }
 
@@ -26,38 +29,70 @@ public:
       Print("ZoneEntryStrategy Init. ThresholdPips = ", m_thresholdPips);
    }
 
-  // ZoneEntryStrategy.mqh
-bool GenerateTradePlan(TradeEntity& plan) {
- // Obtener precio actual
-      double currPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-      double pointSize = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   virtual string Id()
+   {
+      return "ZoneEntry";
+   }
 
-      // umbral de distancia en puntos
+   virtual int Priority()
+   {
+      return 10;
+   }
+
+   virtual bool Enabled()
+   {
+      return m_enabled;
+   }
+
+   virtual bool TryGeneratePlan(const string symbol, TradeEntity &outPlan, double &outScore)
+   {
+      double currPrice = SymbolInfoDouble(symbol, SYMBOL_BID);
+      double pointSize = SymbolInfoDouble(symbol, SYMBOL_POINT);
       double thresholdPoints = m_thresholdPips * pointSize;
 
-    if(!g_zoneManager.NearZone(currPrice, thresholdPoints)) return false;
-    
-    // Pierna 1: 50% tamaño, TP corto con trailing
-    TradeLeg* leg1 = new TradeLeg(
-        0.01,   // 50% del lote total
-        5,     // SL 30 pips
-        10,    // TP 50 pips
-        0      // Trailing cada 15 pips
-    );
-    
-    // Pierna 2: 50% tamaño, TP largo sin trailing
-    TradeLeg* leg2 = new TradeLeg(
-        0.01,   // 50% restante
-        15,     // SL 30 pips
-        50,    // TP 100 pips
-        0       // Sin trailing
-    );
-    
-    plan.legs.Add(leg1);
-    plan.legs.Add(leg2);
-    
-    return true;
-}
+      double nearestDistance = -1.0;
+      for(int i = 0; i < g_zoneManager.GetZoneCount(); i++)
+        {
+          SZone *zone = g_zoneManager.GetZoneByIndex(i);
+          if(zone == NULL)
+             continue;
+          double distance = MathAbs(zone.price - currPrice);
+          if(nearestDistance < 0.0 || distance < nearestDistance)
+             nearestDistance = distance;
+        }
+
+      if(nearestDistance < 0.0)
+         return false;
+
+      if(nearestDistance > thresholdPoints)
+         return false;
+
+      double proximity_norm = 1.0 - (nearestDistance / thresholdPoints);
+      double quality01 = Clamp01(proximity_norm);
+
+      TradeLeg* leg1 = new TradeLeg(
+         0.01,
+         5,
+         10,
+         0
+      );
+
+      TradeLeg* leg2 = new TradeLeg(
+         0.01,
+         15,
+         50,
+         0
+      );
+
+      outPlan.strategyName = Id();
+      outPlan.symbol = symbol;
+      outPlan.type = ORDER_TYPE_BUY;
+      outPlan.legs.Add(leg1);
+      outPlan.legs.Add(leg2);
+
+      outScore = ScorePlan(symbol, quality01, leg1.slPips, leg1.tpPips);
+      return true;
+   }
    // ---------------------------------------------------------------
    // GetSignal(): se llama si EvaluateSignal() devolvió true
    // ---------------------------------------------------------------
