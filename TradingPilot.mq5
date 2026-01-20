@@ -27,6 +27,7 @@ input bool UseZoneEntry = true;
 input bool   UseDoubleBottom = false;// Activar estrategia Doble Suelo
 input bool   UseBreakout     = true;// Activar estrategia Breakout (por implementar)
 input int    LogFrequency    = 10;  // Frecuencia de log: cada X ticks
+input double InpMinScore     = 50.0;
 
 // Variables globales
 ILogger          *g_logger;
@@ -103,18 +104,31 @@ void OnTick() {
     g_positionManager.ManagePositions();
     
     // 2. Generar nueva planificación
-    if(g_positionManager.CanEnterTrade(_Symbol, "Portfolio")) {
-        TradeEntity* newTrade = NULL;
-        if(g_portfolioSelector.SelectBestPlan(_Symbol, newTrade)) 
-        {
-            if(g_riskManager.ValidateTrade(newTrade)) {
-                g_executor.Execute(newTrade);
-                g_tradeManager.AddTrade(newTrade);
-            }
-            else 
-            {
-                delete newTrade;
-            }
-        }
+    if(g_tradeManager.HasActiveTradeBySymbol(_Symbol))
+    {
+        PrintFormat("[Portfolio] skip: active trade for %s", _Symbol);
+        return;
+    }
+
+    TradeEntity bestPlan;
+    double bestScore = 0.0;
+    if(!g_portfolioSelector.SelectBestPlan(_Symbol, bestPlan, bestScore))
+        return;
+    if(bestScore < InpMinScore)
+    {
+        PrintFormat("[Portfolio] skip %s: score %.2f < min %.2f", _Symbol, bestScore, InpMinScore);
+        return;
+    }
+
+    TradeEntity* newTrade = new TradeEntity();
+    newTrade.CopyFrom(bestPlan);
+    if(g_riskManager.ValidateTrade(newTrade))
+    {
+        g_executor.Execute(newTrade);
+        g_tradeManager.AddTrade(newTrade);
+    }
+    else
+    {
+        delete newTrade;
     }
 }

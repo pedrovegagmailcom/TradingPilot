@@ -15,6 +15,13 @@ public:
     bool      isExecuted;   // Nuevo
     CArrayObj legs;
 
+    TradeEntity() :
+        symbol(""), type(ORDER_TYPE_BUY), strategyName(""),
+        active(false), isExecuted(false)
+    {
+        legs.Clear();
+    }
+
     TradeEntity(string _symbol, ENUM_ORDER_TYPE _type, string _strategyName) : 
         symbol(_symbol), type(_type), strategyName(_strategyName), 
         active(false), isExecuted(false) 
@@ -26,6 +33,39 @@ public:
    void AddLeg(TradeLeg *leg)
      {
        legs.Add(leg);
+     }
+
+   void ClearLegs()
+     {
+       for(int i = legs.Total()-1; i >= 0; i--)
+         {
+           TradeLeg *leg = (TradeLeg*)legs.At(i);
+           delete leg;
+         }
+       legs.Clear();
+     }
+
+   void CopyFrom(const TradeEntity &other)
+     {
+       symbol = other.symbol;
+       type = other.type;
+       entryTime = other.entryTime;
+       strategyName = other.strategyName;
+       active = other.active;
+       isExecuted = other.isExecuted;
+       ClearLegs();
+       for(int i = 0; i < other.legs.Total(); i++)
+         {
+           TradeLeg *otherLeg = (TradeLeg*)other.legs.At(i);
+           if(otherLeg == NULL)
+              continue;
+           TradeLeg *leg = new TradeLeg(otherLeg.lotSize, otherLeg.slPips, otherLeg.tpPips, otherLeg.trailingStepPips);
+           leg.ticket = otherLeg.ticket;
+           leg.entryPrice = otherLeg.entryPrice;
+           leg.isPartial = otherLeg.isPartial;
+           leg.closed = otherLeg.closed;
+           legs.Add(leg);
+         }
      }
      
    // Método para buscar y retornar una TradeLeg según su ticket
@@ -62,12 +102,7 @@ public:
      
    ~TradeEntity()
      {
-       for(int i = legs.Total()-1; i >= 0; i--)
-         {
-           TradeLeg *leg = (TradeLeg*)legs.At(i);
-           delete leg;
-         }
-       legs.Clear();
+       ClearLegs();
      }
 };
 

@@ -26,25 +26,20 @@ public:
        m_tradeManager = tradeManager;
      }
 
-   bool SelectBestPlan(const string symbol, TradeEntity* &outPlan)
+   bool SelectBestPlan(const string symbol, TradeEntity &outPlan, double &outScore)
      {
-       outPlan = NULL;
-
-       if(m_tradeManager != NULL && m_tradeManager.HasActiveTradeBySymbol(symbol))
-         {
-           Print("PortfolioSelector: Trade activo para ", symbol, ". No se selecciona plan.");
-           return false;
-         }
+       outScore = 0.0;
 
        if(m_registry == NULL || m_registry.Total() == 0)
          {
-           Print("PortfolioSelector: Sin estrategias registradas para ", symbol);
+           PrintFormat("[Portfolio] sin estrategias para %s", symbol);
            return false;
          }
 
        double bestScore = -1.0e308;
        int bestPriority = -2147483648;
        string bestStrategyId = "";
+       bool hasCandidate = false;
 
        for(int i = 0; i < m_registry.Total(); i++)
          {
@@ -54,52 +49,43 @@ public:
 
            if(!strategy.Enabled())
              {
-               Print("PortfolioSelector: Estrategia ", strategy.Id(), " deshabilitada para ", symbol);
+               PrintFormat("[Portfolio] %s valid=no score=0.00", strategy.Id());
                continue;
              }
 
-           TradeEntity *candidate = new TradeEntity(symbol, ORDER_TYPE_BUY, strategy.Id());
+           TradeEntity candidate(symbol, ORDER_TYPE_BUY, strategy.Id());
            double score = 0.0;
 
-           Print("PortfolioSelector: Evaluando estrategia ", strategy.Id(), " para ", symbol);
-
-           if(!strategy.TryGeneratePlan(symbol, candidate, score))
+           bool valid = strategy.TryGeneratePlan(symbol, candidate, score);
+           if(!valid)
              {
-               Print("PortfolioSelector: Estrategia ", strategy.Id(), " descartada: sin plan para ", symbol);
-               delete candidate;
+               PrintFormat("[Portfolio] %s valid=no score=0.00", strategy.Id());
                continue;
              }
 
-           Print("PortfolioSelector: Estrategia ", strategy.Id(), " score=", DoubleToString(score, 2));
+           PrintFormat("[Portfolio] %s valid=yes score=%.2f", strategy.Id(), score);
 
            bool betterScore = (score > bestScore);
            bool tiePriority = (score == bestScore && strategy.Priority() > bestPriority);
 
            if(betterScore || tiePriority)
              {
-               if(outPlan != NULL)
-                  delete outPlan;
-
-               outPlan = candidate;
+               outPlan.CopyFrom(candidate);
                bestScore = score;
                bestPriority = strategy.Priority();
                bestStrategyId = strategy.Id();
-               Print("PortfolioSelector: Nueva ganadora ", bestStrategyId, " score=", DoubleToString(bestScore, 2), " priority=", bestPriority);
-             }
-           else
-             {
-               Print("PortfolioSelector: Estrategia ", strategy.Id(), " descartada por score/prioridad. Mejor actual: ", bestStrategyId);
-               delete candidate;
+               hasCandidate = true;
              }
          }
 
-       if(outPlan == NULL)
+       if(!hasCandidate)
          {
-           Print("PortfolioSelector: Ninguna estrategia generó plan para ", symbol);
+           PrintFormat("[Portfolio] sin candidato para %s", symbol);
            return false;
          }
 
-       Print("PortfolioSelector: Ganadora final ", outPlan.strategyName, " para ", symbol, " score=", DoubleToString(bestScore, 2));
+       outScore = bestScore;
+       PrintFormat("[Portfolio] WINNER %s score=%.2f symbol=%s", bestStrategyId, bestScore, symbol);
        return true;
      }
 

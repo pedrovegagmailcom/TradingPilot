@@ -44,6 +44,7 @@ public:
                TradeLeg *leg = (TradeLeg*) entity.legs.At(j);
                if(leg.ticket == ticket)
                  {
+                   delete entity;
                    trades.Delete(i);
                    return;
                  }
@@ -104,6 +105,7 @@ public:
              {
                // Registra el cierre de la operación (se utiliza GetDetails() para mostrar la info)
                Print("TradeManager: Operación cerrada: ", entity.GetDetails());
+               delete entity;
                trades.Delete(i);
              }
          }
@@ -130,6 +132,9 @@ void RemoveTradeByIndex(int index)
       return;
    // borramos la posición del array. 
    // Ojo, si usas punteros, quizá debas delete entity si ya no la necesitas
+   TradeEntity *entity = (TradeEntity*) trades.At(index);
+   if(entity != NULL)
+      delete entity;
    trades.Delete(index);
 }
 
