@@ -14,18 +14,23 @@ public:
     int       tradeId;
     bool      active;
     bool      isExecuted;   // Nuevo
+    double    approved_volume;
+    double    approved_risk_money;
+    double    approved_risk_pct;
     CArrayObj legs;
 
     TradeEntity() :
         symbol(""), type(ORDER_TYPE_BUY), strategyName(""), tradeId(0),
-        active(false), isExecuted(false)
+        active(false), isExecuted(false),
+        approved_volume(0.0), approved_risk_money(0.0), approved_risk_pct(0.0)
     {
         legs.Clear();
     }
 
     TradeEntity(string _symbol, ENUM_ORDER_TYPE _type, string _strategyName) : 
         symbol(_symbol), type(_type), strategyName(_strategyName), tradeId(0),
-        active(false), isExecuted(false) 
+        active(false), isExecuted(false),
+        approved_volume(0.0), approved_risk_money(0.0), approved_risk_pct(0.0)
     {
         legs.Clear();
     }
@@ -55,6 +60,9 @@ public:
        tradeId = other.tradeId;
        active = other.active;
        isExecuted = other.isExecuted;
+       approved_volume = other.approved_volume;
+       approved_risk_money = other.approved_risk_money;
+       approved_risk_pct = other.approved_risk_pct;
        ClearLegs();
        for(int i = 0; i < other.legs.Total(); i++)
          {
