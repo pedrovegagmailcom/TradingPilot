@@ -74,6 +74,18 @@ double CalculateStopLossPrice(const string symbol, const ENUM_ORDER_TYPE type, c
    return RoundToDigits(sl, digits);
 }
 
+double CalculateTakeProfitPrice(const string symbol, const ENUM_ORDER_TYPE type, const double entry, const double tpPips)
+{
+   if(tpPips <= 0.0)
+      return 0.0;
+   double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
+   double pipSize = point * 10.0;
+   double offset = tpPips * pipSize;
+   double tp = (type == ORDER_TYPE_BUY) ? entry + offset : entry - offset;
+   int digits = (int)SymbolInfoInteger(symbol, SYMBOL_DIGITS);
+   return RoundToDigits(tp, digits);
+}
+
 //-------------------------------------------------------------------
 // Expert initialization function
 //-------------------------------------------------------------------
@@ -183,9 +195,12 @@ void OnTick() {
            ? SymbolInfoDouble(newTrade.symbol, SYMBOL_ASK)
            : SymbolInfoDouble(newTrade.symbol, SYMBOL_BID);
         double stopLossPrice = CalculateStopLossPrice(newTrade.symbol, newTrade.type, entryPrice, leg.slPips);
-        RiskDecision decision = g_riskManager.Evaluate(newTrade.symbol, newTrade.type, entryPrice, stopLossPrice, newTrade.strategyName);
+        double takeProfitPrice = CalculateTakeProfitPrice(newTrade.symbol, newTrade.type, entryPrice, leg.tpPips);
+        leg.slPrice = stopLossPrice;
+        leg.tpPrice = takeProfitPrice;
+        RiskDecision decision = g_riskManager.Evaluate(newTrade.symbol, newTrade.type, entryPrice, leg.slPrice, newTrade.strategyName);
         double point = SymbolInfoDouble(newTrade.symbol, SYMBOL_POINT);
-        double sl_points = (point > 0.0) ? MathAbs(entryPrice - stopLossPrice) / point : 0.0;
+        double sl_points = (point > 0.0) ? MathAbs(entryPrice - leg.slPrice) / point : 0.0;
         if(!decision.allowed)
           {
            PrintFormat("[Risk][WARN] symbol=%s strategy=%s reason=%s",
@@ -196,8 +211,12 @@ void OnTick() {
         leg.lotSize = decision.volume;
         totalApprovedVolume += decision.volume;
         totalRiskMoney += decision.risk_money;
-        PrintFormat("[Risk][INFO] symbol=%s strategy=%s entry=%.5f sl=%.5f sl_points=%.2f volume=%.2f risk_money=%.2f risk_pct=%.2f",
-                    newTrade.symbol, newTrade.strategyName, entryPrice, stopLossPrice, sl_points, decision.volume,
+        int digits = (int)SymbolInfoInteger(newTrade.symbol, SYMBOL_DIGITS);
+        string entryStr = DoubleToString(entryPrice, digits);
+        string slStr = DoubleToString(leg.slPrice, digits);
+        string tpStr = (leg.tpPrice > 0.0) ? DoubleToString(leg.tpPrice, digits) : "0";
+        PrintFormat("[Risk][INFO] symbol=%s strategy=%s entry=%s sl=%s tp=%s sl_points=%.2f volume=%.2f risk_money=%.2f risk_pct=%.2f",
+                    newTrade.symbol, newTrade.strategyName, entryStr, slStr, tpStr, sl_points, decision.volume,
                     decision.risk_money, decision.risk_pct);
       }
     if(allowed)

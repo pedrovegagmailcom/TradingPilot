@@ -72,6 +72,8 @@ public:
            TradeLeg *leg = new TradeLeg(otherLeg.lotSize, otherLeg.slPips, otherLeg.tpPips, otherLeg.trailingStepPips);
            leg.ticket = otherLeg.ticket;
            leg.entryPrice = otherLeg.entryPrice;
+           leg.slPrice = otherLeg.slPrice;
+           leg.tpPrice = otherLeg.tpPrice;
            leg.magic = otherLeg.magic;
            leg.comment = otherLeg.comment;
            leg.legIndex = otherLeg.legIndex;

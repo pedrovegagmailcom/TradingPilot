@@ -28,8 +28,32 @@ public:
                 ? SymbolInfoDouble(sym, SYMBOL_ASK) 
                 : SymbolInfoDouble(sym, SYMBOL_BID);
                 
-            double sl = CalculateSL(sym, entity.type, price, leg.slPips);
-            double tp = CalculateTP(sym, entity.type, price, leg.tpPips);
+            double sl = 0.0;
+            double tp = 0.0;
+            bool usedLegacy = false;
+            if(leg.slPrice > 0.0)
+            {
+                sl = leg.slPrice;
+            }
+            else
+            {
+                sl = CalculateSL(sym, entity.type, price, leg.slPips);
+                usedLegacy = true;
+            }
+            if(leg.tpPrice > 0.0)
+            {
+                tp = leg.tpPrice;
+            }
+            else
+            {
+                tp = CalculateTP(sym, entity.type, price, leg.tpPips);
+                usedLegacy = true;
+            }
+            if(usedLegacy)
+            {
+                int legId = (leg.legIndex >= 0) ? leg.legIndex : i;
+                PrintFormat("[Exec][WARN] Using legacy SL/TP calc from pips for leg=%d symbol=%s", legId, sym);
+            }
             
             double min_stop = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * SymbolInfoDouble(sym, SYMBOL_POINT);
             if(MathAbs(price - sl) < min_stop || MathAbs(price - tp) < min_stop) {
@@ -84,14 +108,16 @@ double CalculateSL(string sym, ENUM_ORDER_TYPE type, double entry, double pips) 
     double pipSize = SymbolInfoDouble(sym, SYMBOL_POINT) * 10; // 1 pip = 10 puntos
     double offset = pips * pipSize;
     double sl = (type == ORDER_TYPE_BUY) ? entry - offset : entry + offset;
-    return RoundToDigits(sl, 5); // Redondear a 5 decimales
+    int digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+    return RoundToDigits(sl, digits);
 }
 
 double CalculateTP(string sym, ENUM_ORDER_TYPE type, double entry, double pips) {
     double pipSize = SymbolInfoDouble(sym, SYMBOL_POINT) * 10;
     double offset = pips * pipSize;
     double tp = (type == ORDER_TYPE_BUY) ? entry + offset : entry - offset;
-    return RoundToDigits(tp, 5); // Redondear a 5 decimales
+    int digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+    return RoundToDigits(tp, digits);
 }
 
     void Rollback(CArrayObj& legs) {
