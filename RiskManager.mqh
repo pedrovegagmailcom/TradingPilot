@@ -40,10 +40,10 @@ public:
    }
    
    
-  bool ValidateTrade(TradeEntity* trade) {
+  bool ValidateTrade(TradeEntity* entity) {
     double totalRisk = 0;
-    for(int i=0; i<trade.legs.Total(); i++) {
-        TradeLeg* leg = (TradeLeg*)trade.legs.At(i);
+    for(int i=0; i<entity.legs.Total(); i++) {
+        TradeLeg* leg = (TradeLeg*)entity.legs.At(i);
         totalRisk += CalculateLotSize(RiskPercent, leg.slPips);
     }
     return (totalRisk <= riskAmount);
