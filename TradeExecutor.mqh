@@ -40,11 +40,19 @@ public:
                return false;
                }
             m_trade.SetExpertMagicNumber((ulong)leg.magic);
-            m_trade.SetComment(leg.comment);
-            if(!m_trade.PositionOpen(sym, entity.type, leg.lotSize, price, sl, tp)) {
+            if(!m_trade.PositionOpen(sym, entity.type, leg.lotSize, price, sl, tp, leg.comment)) {
                 Print("Error en pierna ", i, ": ", GetLastError());
                 Rollback(executedLegs);
                 return false;
+            }
+            if(m_trade.ResultRetcode() != TRADE_RETCODE_DONE && m_trade.ResultRetcode() != TRADE_RETCODE_DONE_PARTIAL)
+            {
+               PrintFormat("[Exec] retcode=%d %s broker_comment=%s",
+                           m_trade.ResultRetcode(),
+                           m_trade.ResultRetcodeDescription(),
+                           m_trade.ResultComment());
+               Rollback(executedLegs);
+               return false;
             }
 
             ENUM_POSITION_TYPE posType = (entity.type == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL;
