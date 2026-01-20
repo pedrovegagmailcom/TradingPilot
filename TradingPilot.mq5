@@ -1,4 +1,4 @@
-﻿//#property strict
+//#property strict
 #include <Trade\Trade.mqh>
 
 #include "ILogger.mqh"

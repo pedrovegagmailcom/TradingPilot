@@ -1,4 +1,4 @@
-﻿#ifndef __TRADEMANAGER_MQH__
+#ifndef __TRADEMANAGER_MQH__
 #define __TRADEMANAGER_MQH__
 
 #include <Arrays\ArrayObj.mqh>

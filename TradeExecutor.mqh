@@ -1,4 +1,4 @@
-﻿// TradeExecutor.mqh
+// TradeExecutor.mqh
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Arrays\ArrayObj.mqh>
@@ -8,6 +8,7 @@ private:
     CTrade m_trade;
     
 public:
+    // Usamos puntero aquí para mantener la semántica actual de propiedad y mutación en ejecución.
     bool Execute(TradeEntity* entity) {
         if(entity == NULL || entity.isExecuted) return false;
 

@@ -1,4 +1,4 @@
-﻿#ifndef __TRADELEG_MQH__
+#ifndef __TRADELEG_MQH__
 #define __TRADELEG_MQH__
 
 #include <Object.mqh>

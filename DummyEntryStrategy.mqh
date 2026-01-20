@@ -50,10 +50,6 @@ public:
       return true;
    }
 
-   virtual void GetSignal()
-   {
-      Print("DummyEntryStrategy: Señal dummy generada.");
-   }
 };
 
 #endif // __DUMMYENTRYSTRATEGY_MQH__

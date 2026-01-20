@@ -1,4 +1,4 @@
-﻿#ifndef __TRADEENTITY_MQH__
+#ifndef __TRADEENTITY_MQH__
 #define __TRADEENTITY_MQH__
 
 #include <Arrays\ArrayObj.mqh>

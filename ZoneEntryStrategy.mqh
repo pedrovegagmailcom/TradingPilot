@@ -1,4 +1,4 @@
-﻿#ifndef __ZONEENTRYSTRATEGY_MQH__
+#ifndef __ZONEENTRYSTRATEGY_MQH__
 #define __ZONEENTRYSTRATEGY_MQH__
 
 #include "IEntryStrategy.mqh"
@@ -92,13 +92,6 @@ public:
 
       outScore = ScorePlan(symbol, quality01, leg1.slPips, leg1.tpPips);
       return true;
-   }
-   // ---------------------------------------------------------------
-   // GetSignal(): se llama si EvaluateSignal() devolvió true
-   // ---------------------------------------------------------------
-   virtual void GetSignal()
-   {
-      Print("ZoneEntryStrategy: Señal generada. Precio cerca de una zona de trabajo.");
    }
 };
 
