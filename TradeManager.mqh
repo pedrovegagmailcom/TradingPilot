@@ -1,4 +1,4 @@
-﻿#ifndef __TRADEMANAGER_MQH__
+#ifndef __TRADEMANAGER_MQH__
 #define __TRADEMANAGER_MQH__
 
 #include <Arrays\ArrayObj.mqh>
@@ -44,6 +44,7 @@ public:
                TradeLeg *leg = (TradeLeg*) entity.legs.At(j);
                if(leg.ticket == ticket)
                  {
+                   delete entity;
                    trades.Delete(i);
                    return;
                  }
@@ -79,6 +80,18 @@ public:
          }
        return false;
      }
+
+   // Verifica si existe una operación activa para un símbolo (regla de 1 trade por símbolo)
+   bool HasActiveTradeBySymbol(string symbol)
+     {
+       for(int i = 0; i < trades.Total(); i++)
+         {
+           TradeEntity *entity = (TradeEntity*) trades.At(i);
+           if(entity.active && entity.symbol == symbol)
+              return true;
+         }
+       return false;
+     }
      
    // Actualiza el estado de las operaciones abiertas. 
    // Se registra solo cuando se detecta que una operación ha sido cerrada, y se elimina del array.
@@ -92,6 +105,7 @@ public:
              {
                // Registra el cierre de la operación (se utiliza GetDetails() para mostrar la info)
                Print("TradeManager: Operación cerrada: ", entity.GetDetails());
+               delete entity;
                trades.Delete(i);
              }
          }
@@ -118,6 +132,9 @@ void RemoveTradeByIndex(int index)
       return;
    // borramos la posición del array. 
    // Ojo, si usas punteros, quizá debas delete entity si ya no la necesitas
+   TradeEntity *entity = (TradeEntity*) trades.At(index);
+   if(entity != NULL)
+      delete entity;
    trades.Delete(index);
 }
 

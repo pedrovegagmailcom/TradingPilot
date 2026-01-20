@@ -1,4 +1,4 @@
-﻿#ifndef __ZONEMANAGER_MQH__
+#ifndef __ZONEMANAGER_MQH__
 #define __ZONEMANAGER_MQH__
 
 #include <Arrays\ArrayObj.mqh>

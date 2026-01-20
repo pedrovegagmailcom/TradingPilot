@@ -1,4 +1,4 @@
-﻿// TradeExecutor.mqh
+// TradeExecutor.mqh
 #include <Trade\Trade.mqh>
 #include <Trade\SymbolInfo.mqh>
 #include <Arrays\ArrayObj.mqh>
@@ -8,6 +8,7 @@ private:
     CTrade m_trade;
     
 public:
+    // Usamos puntero aquí para mantener la semántica actual de propiedad y mutación en ejecución.
     bool Execute(TradeEntity* entity) {
         if(entity == NULL || entity.isExecuted) return false;
 
@@ -44,14 +45,20 @@ public:
                 return false;
             }
 
-            // Obtener ticket de la posición
-            ulong deal_ticket = m_trade.ResultDeal();
-            if(deal_ticket == 0) {
-                Print("Error obteniendo ticket del deal");
-                return false;
+            ENUM_POSITION_TYPE posType = (entity.type == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL;
+            long positionTicket = FindRecentPositionTicket(sym, posType, leg.lotSize);
+            if(positionTicket <= 0)
+            {
+                Print("Error obteniendo ticket de la posición");
+                leg.ticket = 0;
             }
-            leg.ticket = (long)deal_ticket;
+            else
+            {
+                leg.ticket = positionTicket;
+            }
             leg.entryPrice = price;
+            PrintFormat("[Exec] leg opened strategy=%s symbol=%s vol=%.2f pos_ticket=%lld",
+                        entity.strategyName, sym, leg.lotSize, leg.ticket);
 
             //executedLegs.Add(leg);
         }
@@ -87,6 +94,31 @@ double CalculateTP(string sym, ENUM_ORDER_TYPE type, double entry, double pips) 
                 m_trade.PositionClose(leg.ticket);
             }
         }
+    }
+
+    long FindRecentPositionTicket(const string symbol, ENUM_POSITION_TYPE type, double volume)
+    {
+        datetime now = TimeCurrent();
+        for(int i = PositionsTotal() - 1; i >= 0; --i)
+        {
+            if(!PositionSelectByIndex(i))
+                continue;
+            if(PositionGetString(POSITION_SYMBOL) != symbol)
+                continue;
+            if((ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE) != type)
+                continue;
+
+            datetime t = (datetime)PositionGetInteger(POSITION_TIME);
+            if(now - t > 60)
+                continue;
+
+            double v = PositionGetDouble(POSITION_VOLUME);
+            if(MathAbs(v - volume) > 0.0000001)
+                continue;
+
+            return (long)PositionGetInteger(POSITION_TICKET);
+        }
+        return -1;
     }
 
     
