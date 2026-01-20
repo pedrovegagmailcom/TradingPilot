@@ -17,11 +17,8 @@ public:
             TradeLeg* leg = (TradeLeg*)entity.legs.At(i);
             string sym = entity.symbol;
 
-            // Validar lote
-            double min_lot = SymbolInfoDouble(sym, SYMBOL_VOLUME_MIN);
-            double lot_step = SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP);
-            leg.lotSize = MathFloor(leg.lotSize / lot_step) * lot_step;
-            if(leg.lotSize < min_lot) {
+            // Validar lote ya aprobado
+            if(leg.lotSize <= 0.0) {
                 Print("Lote inválido en pierna ", i);
                 return false;
             }
