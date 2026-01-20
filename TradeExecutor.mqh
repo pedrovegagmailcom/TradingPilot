@@ -56,7 +56,11 @@ public:
             }
             
             double min_stop = SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL) * SymbolInfoDouble(sym, SYMBOL_POINT);
-            if(MathAbs(price - sl) < min_stop || MathAbs(price - tp) < min_stop) {
+            if(sl > 0.0 && MathAbs(price - sl) < min_stop) {
+               Print("Stop demasiado cerca del precio");
+               return false;
+               }
+            if(tp > 0.0 && MathAbs(price - tp) < min_stop) {
                Print("Stop demasiado cerca del precio");
                return false;
                }
