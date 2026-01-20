@@ -13,6 +13,9 @@ public:
     double slPips;       // Nuevo: SL en pips
     double tpPips;       // Nuevo: TP en pips
     int    trailingStepPips; // Nuevo: Paso trailing
+    long   magic;
+    string comment;
+    int    legIndex;
     bool   isPartial;
     bool   closed;
 
@@ -22,6 +25,9 @@ public:
     {
         ticket = 0;
         entryPrice = 0.0;
+        magic = 0;
+        comment = "";
+        legIndex = -1;
         isPartial = false;
         closed = false;
     }

@@ -39,6 +39,8 @@ public:
                Print("Stop demasiado cerca del precio");
                return false;
                }
+            m_trade.SetExpertMagicNumber((ulong)leg.magic);
+            m_trade.SetComment(leg.comment);
             if(!m_trade.PositionOpen(sym, entity.type, leg.lotSize, price, sl, tp)) {
                 Print("Error en pierna ", i, ": ", GetLastError());
                 Rollback(executedLegs);
@@ -46,7 +48,7 @@ public:
             }
 
             ENUM_POSITION_TYPE posType = (entity.type == ORDER_TYPE_BUY) ? POSITION_TYPE_BUY : POSITION_TYPE_SELL;
-            long positionTicket = FindRecentPositionTicket(sym, posType, leg.lotSize);
+            long positionTicket = FindRecentPositionTicket(sym, posType, leg.magic, leg.comment);
             if(positionTicket <= 0)
             {
                 Print("Error obteniendo ticket de la posición");
@@ -57,8 +59,8 @@ public:
                 leg.ticket = positionTicket;
             }
             leg.entryPrice = price;
-            PrintFormat("[Exec] leg opened strategy=%s symbol=%s vol=%.2f pos_ticket=%lld",
-                        entity.strategyName, sym, leg.lotSize, leg.ticket);
+            PrintFormat("[Exec] opened strategy=%s symbol=%s vol=%.2f magic=%ld comment=%s pos_ticket=%lld",
+                        entity.strategyName, sym, leg.lotSize, leg.magic, leg.comment, leg.ticket);
 
             //executedLegs.Add(leg);
         }
@@ -96,9 +98,8 @@ double CalculateTP(string sym, ENUM_ORDER_TYPE type, double entry, double pips) 
         }
     }
 
-    long FindRecentPositionTicket(const string symbol, ENUM_POSITION_TYPE type, double volume)
+    long FindRecentPositionTicket(const string symbol, ENUM_POSITION_TYPE type, long magic, const string comment)
     {
-        datetime now = TimeCurrent();
         for(int i = PositionsTotal() - 1; i >= 0; --i)
         {
             ulong ticket = PositionGetTicket(i);
@@ -110,13 +111,9 @@ double CalculateTP(string sym, ENUM_ORDER_TYPE type, double entry, double pips) 
                 continue;
             if((ENUM_POSITION_TYPE)PositionGetInteger(POSITION_TYPE) != type)
                 continue;
-
-            datetime t = (datetime)PositionGetInteger(POSITION_TIME);
-            if(now - t > 60)
+            if((long)PositionGetInteger(POSITION_MAGIC) != magic)
                 continue;
-
-            double v = PositionGetDouble(POSITION_VOLUME);
-            if(MathAbs(v - volume) > 0.0000001)
+            if(comment != "" && PositionGetString(POSITION_COMMENT) != comment)
                 continue;
 
             return (long)ticket;

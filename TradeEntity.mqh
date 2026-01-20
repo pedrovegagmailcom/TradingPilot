@@ -11,19 +11,20 @@ public:
     ENUM_ORDER_TYPE type;  // Nuevo
     datetime  entryTime;
     string    strategyName;
+    int       tradeId;
     bool      active;
     bool      isExecuted;   // Nuevo
     CArrayObj legs;
 
     TradeEntity() :
-        symbol(""), type(ORDER_TYPE_BUY), strategyName(""),
+        symbol(""), type(ORDER_TYPE_BUY), strategyName(""), tradeId(0),
         active(false), isExecuted(false)
     {
         legs.Clear();
     }
 
     TradeEntity(string _symbol, ENUM_ORDER_TYPE _type, string _strategyName) : 
-        symbol(_symbol), type(_type), strategyName(_strategyName), 
+        symbol(_symbol), type(_type), strategyName(_strategyName), tradeId(0),
         active(false), isExecuted(false) 
     {
         legs.Clear();
@@ -51,6 +52,7 @@ public:
        type = other.type;
        entryTime = other.entryTime;
        strategyName = other.strategyName;
+       tradeId = other.tradeId;
        active = other.active;
        isExecuted = other.isExecuted;
        ClearLegs();
@@ -62,6 +64,9 @@ public:
            TradeLeg *leg = new TradeLeg(otherLeg.lotSize, otherLeg.slPips, otherLeg.tpPips, otherLeg.trailingStepPips);
            leg.ticket = otherLeg.ticket;
            leg.entryPrice = otherLeg.entryPrice;
+           leg.magic = otherLeg.magic;
+           leg.comment = otherLeg.comment;
+           leg.legIndex = otherLeg.legIndex;
            leg.isPartial = otherLeg.isPartial;
            leg.closed = otherLeg.closed;
            legs.Add(leg);
@@ -99,6 +104,12 @@ public:
      }
      
    virtual void Clear() {}
+
+   static int NextTradeId()
+     {
+       static int nextId = 1;
+       return nextId++;
+     }
      
    ~TradeEntity()
      {
