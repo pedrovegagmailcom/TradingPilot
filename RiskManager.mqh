@@ -18,7 +18,7 @@ private:
      }
 
 public:
-   RiskManager(const double maxRiskPerTradePct=0.5, const double minSlPoints=1.0)
+   RiskManager(const double maxRiskPerTradePct=0.5, const double minSlPoints=10.0)
      {
       m_max_risk_per_trade_pct = maxRiskPerTradePct;
       m_min_sl_points = minSlPoints;
@@ -33,40 +33,44 @@ public:
                                  const string strategyId)
      {
       (void)strategyId;
-      if(stopLossPrice == 0.0)
-         return Reject("SL inválido: stopLossPrice=0");
+      if(stopLossPrice <= 0.0)
+         return Reject("Invalid stop-loss price");
       if(entryPrice <= 0.0)
-         return Reject("Precio de entrada inválido");
+         return Reject("Invalid entry price");
 
       if(orderType == ORDER_TYPE_BUY && stopLossPrice >= entryPrice)
-         return Reject("SL inválido: en BUY debe ser menor al entry");
+         return Reject("Invalid stop-loss direction for BUY");
       if(orderType == ORDER_TYPE_SELL && stopLossPrice <= entryPrice)
-         return Reject("SL inválido: en SELL debe ser mayor al entry");
+         return Reject("Invalid stop-loss direction for SELL");
 
       double point = SymbolInfoDouble(symbol, SYMBOL_POINT);
       if(point <= 0.0)
-         return Reject("SYMBOL_POINT inválido");
+         return Reject("Invalid symbol properties (point/ticksize/tickvalue)");
 
       double sl_points = MathAbs(entryPrice - stopLossPrice) / point;
       if(sl_points < m_min_sl_points)
-         return Reject("SL demasiado pequeño (puntos insuficientes)");
+        {
+         string reason = StringFormat("Stop-loss distance too small (sl_points=%.2f, min=%.2f)",
+                                      sl_points, m_min_sl_points);
+         return Reject(reason);
+        }
 
       double tickValue = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_VALUE);
       double tickSize  = SymbolInfoDouble(symbol, SYMBOL_TRADE_TICK_SIZE);
       if(tickValue <= 0.0 || tickSize <= 0.0)
-         return Reject("TickSize o TickValue inválido");
+         return Reject("Invalid symbol properties (point/ticksize/tickvalue)");
 
       double money_per_point_per_lot = (tickValue / tickSize) * point;
       if(money_per_point_per_lot <= 0.0)
-         return Reject("Valor monetario por punto inválido");
+         return Reject("Invalid money per point per lot");
 
       double risk_per_lot = sl_points * money_per_point_per_lot;
       if(risk_per_lot <= 0.0)
-         return Reject("Riesgo por lote inválido");
+         return Reject("Invalid risk per lot");
 
       double equity = AccountInfoDouble(ACCOUNT_EQUITY);
       if(equity <= 0.0)
-         return Reject("Equity inválida");
+         return Reject("Invalid equity");
       if(m_max_risk_per_trade_pct <= 0.0)
          return Reject("MaxRiskPerTradePct inválido");
 
@@ -97,11 +101,14 @@ public:
       if(freeMargin < margin)
          return Reject("Margin insuficiente");
 
+      double actual_risk_money = volume * risk_per_lot;
+      double actual_risk_pct = (actual_risk_money / equity) * 100.0;
+
       RiskDecision decision;
       decision.allowed = true;
       decision.volume = volume;
-      decision.risk_money = volume * risk_per_lot;
-      decision.risk_pct = (decision.risk_money / equity) * 100.0;
+      decision.risk_money = actual_risk_money;
+      decision.risk_pct = actual_risk_pct;
       decision.reason = "";
       return decision;
      }

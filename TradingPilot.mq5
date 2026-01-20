@@ -24,6 +24,7 @@
 //-------------------------------------------------------------------
 // Parámetros de entrada
 input double RiskPercent   = 0.5;   // % de riesgo por operación
+input double MinSLPoints   = 10.0;  // SL mínimo en puntos
 input double DrawdownLimit = 10.0;  // Límite máximo de drawdown
 input bool UseZoneEntry = true;
 input bool UseDummyEntry = false;
@@ -104,7 +105,7 @@ int OnInit()
    g_positionManager = new PositionManager();
    g_positionManager.Init();
 
-   g_riskManager = new RiskManager(RiskPercent);
+   g_riskManager = new RiskManager(RiskPercent, MinSLPoints);
    g_riskManager.Init();
    g_executor = new TradeExecutor();
    
@@ -195,8 +196,9 @@ void OnTick() {
         leg.lotSize = decision.volume;
         totalApprovedVolume += decision.volume;
         totalRiskMoney += decision.risk_money;
-        PrintFormat("[Risk][INFO] symbol=%s strategy=%s volume=%.2f sl_points=%.2f risk_money=%.2f risk_pct=%.2f",
-                    newTrade.symbol, newTrade.strategyName, decision.volume, sl_points, decision.risk_money, decision.risk_pct);
+        PrintFormat("[Risk][INFO] symbol=%s strategy=%s entry=%.5f sl=%.5f sl_points=%.2f volume=%.2f risk_money=%.2f risk_pct=%.2f",
+                    newTrade.symbol, newTrade.strategyName, entryPrice, stopLossPrice, sl_points, decision.volume,
+                    decision.risk_money, decision.risk_pct);
       }
     if(allowed)
       {
